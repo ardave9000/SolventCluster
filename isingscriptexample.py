@@ -9,15 +9,21 @@ k = scipy.constants.physical_constants['Boltzmann constant in eV/K'][0]
 N = scipy.constants.N_A
 
 
+'''
+Pickle file contains parameters from fit to Gutmann scale, an approximation to interaction terms H based on experimental results
+However, for this model system, DFT-calculated values are used because the solvents involved are so similar on the Gutmann scale.
+'''
+
 pkl_f=open('datalib.pkl','rb')
 dicts=pickle.load(pkl_f)
 an_tuple=dicts['AN params']
 dn_tuple=dicts['DN params']
 
 def gutmann_curve(x,a,b,c,d):
-    """Take in x-points and 4-elements a,b,c,d. Return a*x/(b+c*x) + d"""
+    '''x here is solvent donor / acceptor number, which relates to interaction terms H by fitted parameters {a,b,c,d}'''
     return a*x/(b+c*x)+d
 def loaddata(fname):
+	'''Load data from solvent data text file'''
 	def processline(headers,s):
 		new = s[:-1].split('\t')
 		species = new[0]
@@ -37,7 +43,7 @@ def loaddata(fname):
 			data[species] = Species(name = species, **params)
 		return data
 def plotEntropy(mix):
-	# 15 moles = 1 liter of solvent. Assume 1M salt. All concentrations in mole fraction (i.e. c_salt = 1./16)
+	'''All concentrations in mole fraction (i.e. c_salt = 1./16)'''
 	entropy = []
 	x = np.linspace(0,15,num=1000)
 	for c1 in x:
@@ -52,6 +58,7 @@ def plotEntropy(mix):
 	plt.ylabel("Mixing Entropy (eV)")
 	plt.show()
 def nonlinear(mean_occs,mix,solutecharge):
+	''' function relates mean occupation and interaction energy'''
 	h = mix.Hamiltonians(mean_occs,solutecharge)
 	def bexp(H,T):
 		return math.exp(-H/(k*T))
@@ -61,7 +68,7 @@ def nonlinear(mean_occs,mix,solutecharge):
 	return [n-e1/Z,m-e2/Z,l-e3/Z]
 
 
-fname = 'species.txt'
+fname = 'species.txt' #text file with species data (charge, size, AN/DN)
 species = loaddata(fname)
 for specie in species:
 	if specie != "Li":
@@ -73,45 +80,32 @@ for specie in species:
 	if species[specie].charge != 0:
 		species[specie].Jii = 0.1
 
-#Plug in DFT values
+#Manually plugging in DFT values (see excel document for details)
 species['EC'].hcation =-1.4
 species['EMC'].hcation = -1.16
 species['DMC'].hcation = -1.08
-#species['PF6'].hcation = -1.3
+species['PF6'].hcation = -0.1 #citing PNAS paper for justificaiton, but will soon make my own DFT calculation to confirm
 
 concentrations = np.linspace(0.01,1,1000)
 GLi = []
 p1 = []
 p2 = []
 pion = []
-#GF = []
 for c1 in concentrations:
 	mix = Mixture(solvent1 = species['EC'], solvent2 = species['DMC'], cation = species['Li'], anion = species['PF6'], c1 = c1,c2=(1.-c1), T=310)
 	mix.IdealMixing()
 	mix.totalmol=mix.c1+mix.c2+mix.csalt
 	mix.Initialize()
-	mix.J12 = -0.01
-	#probLi=root(nonlinear,[mix.z*mix.c1/mix.totalmol,mix.z*mix.c2/mix.totalmol,0],(mix,1))
+	mix.J12 = -0.01 #citing PNAS paper for justificaiton, but will soon make my own DFT calculation to confirm
 	probLi=root(nonlinear,[mix.c1/mix.totalmol*mix.z,mix.c2/mix.totalmol*mix.z,0],(mix,1))
 
 	n,m,l=probLi.x
 	p1.append(n)
 	p2.append(m)
 	pion.append(l)
-	GLi.append(mix.z*(n*mix.solvent1.hcation+m*mix.solvent2.hcation+l*mix.anion.hcation)
-	'''
-	probF=root(nonlinear,[mix.c1,mix.c2,0],(mix,-1))
-	p,q,r=probF.x
-	GF.append(p*mix.solvent1.hanion+q*mix.solvent2.hanion+r*mix.cation.hanion)
-	'''
+	GLi.append(mix.z*(n*mix.solvent1.hcation+m*mix.solvent2.hcation+l*mix.anion.hcation))
 
-# plt.plot(concentrations/1,GLi,'rx',label='Li+')
-# #plt.plot(concentrations/16,GF,'b-',label='PF6-')
-# plt.xlabel("Mole ratio of EC")
-# plt.ylabel("Solvation G (eV)")
-# plt.title("Li (1M of EC-to-DMC, ideal mix, h from DFT)")
-# plt.legend()
-# plt.show()
+
 plt.plot(concentrations/1,p1,'ro',label='EC')
 plt.plot(concentrations/1,p2,'bx',label='DMC')
 plt.plot(concentrations/1,pion,'g^',label='PF6')
@@ -120,3 +114,9 @@ plt.ylabel("Probability of occupation in shell (eV)")
 plt.title("Probability in Li Shell (1M of EC-to-DMC, ideal mix, h from DFT)")
 plt.legend()
 plt.show()
+plt.plot(concentrations/1,GLi,'rx')
+plt.xlabel("Mole ratio of EC")
+plt.ylabel("Free Energy of Lithium in solvation (eV)")
+plt.title("GLi v. Ratio of EC")
+plt.show()
+
