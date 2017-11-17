@@ -1,0 +1,6 @@
+species	dn	an	charge	di	ion_size
+EC	16.4	18	0	95.3	4.23
+EMC	17.2	18	0	2.65	7.61
+DMC	17.2	18	0	3.10	6.31
+PF6	2.18	0	-1	0	3.3
+Li	0	50	+1	0	0.68
