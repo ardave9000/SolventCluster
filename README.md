@@ -1,2 +1,4 @@
 # SolventCluster
-Ising-derived cluster model for mixing non-aqueous solvents in an electrolyte
+Lattice models for mixing non-aqueous solvents in an electrolyte
+
+(DEC 2017) - Ising-derived model
